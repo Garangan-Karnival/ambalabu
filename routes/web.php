@@ -2,10 +2,9 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\WeatherController; 
 
-Route::get('/', function () {
-    return view('home');
-});
+Route::get('/', [WeatherController::class, 'currentWeather'])->name('home');
 
 Route::get('/grafik', function () {
     return view('grafik');
@@ -25,3 +24,9 @@ Route::get('/profile', function () {
 Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
 Route::post('/register', [AuthController::class, 'register'])->name('register.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// Weather routes
+
+Route::get('/weather', [WeatherController::class, 'currentWeather']);
+Route::get('/weather/forecast', [WeatherController::class, 'forecast']);
+Route::get('/weather-refresh', [WeatherController::class, 'fetchWeather']);
