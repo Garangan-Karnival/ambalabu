@@ -8,7 +8,7 @@ Route::get('/', [WeatherController::class, 'currentWeather'])->name('home');
 
 Route::get('/grafik', function () {
     return view('grafik');
-});
+})->name('grafik');
 
 // Login & register page
 Route::get('/login', function () {

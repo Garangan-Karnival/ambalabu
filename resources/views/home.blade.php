@@ -16,15 +16,15 @@
         <nav class="w-full bg-white shadow rounded-b-3xl px-8 py-4 flex items-center justify-between">
 
             <div class="flex items-center gap-16">
-                <a href="/" class="flex flex-col items-center hover:text-blue-600">
+                <a href="{{ route('home') }}" class="flex flex-col items-center hover:text-blue-600">
                     <span class="text-sm mt-1">Home</span>
                 </a>
 
-                <a href="/grafik" class="flex flex-col items-center hover:text-blue-600">
+                <a href="{{ route('grafik') }}" class="flex flex-col items-center hover:text-blue-600">
                     <span class="text-sm mt-1">Grafik</span>
                 </a>
 
-                <a href="/profile" class="flex flex-col items-center hover:text-blue-600">
+                <a href="{{ route('profile') }}" class="flex flex-col items-center hover:text-blue-600">
                     <span class="text-sm mt-1">Profile</span>
                 </a>
             </div>
