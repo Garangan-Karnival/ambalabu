@@ -41,9 +41,16 @@
 
             {{-- HEADER --}}
             <div class="mb-6">
+                @auth
                 <h1 class="text-3xl font-semibold text-gray-700">
-                    Hi, <span class="text-blue-600 font-bold">User!</span>
+                    Hi, <span class="text-blue-600 font-bold">{{ Auth::user()->username }}!</span>
                 </h1>
+                @endauth
+                @guest
+                <h1 class="text-3xl font-semibold text-gray-700">
+                    Hi, <span class="text-blue-600 font-bold">Guest!</span>
+                </h1>
+                @endguest
 
                 <p class="text-gray-400">
                     The roof will automatically adjust to the <span class="text-yellow-600">current weather
