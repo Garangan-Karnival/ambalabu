@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Session;
 use App\Models\User;
 
 use Exception; // Tambahkan ini di bagian atas file
@@ -26,7 +27,8 @@ public function register(Request $request)
         ]);
 
         Auth::login($user);
-        return redirect()->intended(route('profile'))->with('success', 'Selamat datang!');
+        Session::put('id_user', $user->id_user);
+        return redirect()->intended(route('profile.show'))->with('success', 'Selamat datang!');
 
     } catch (Exception $e) {
         // Ini akan menampilkan error teknis database
@@ -53,8 +55,11 @@ public function login(Request $request)
         // PENTING: Regenerate session ID untuk keamanan
         $request->session()->regenerate(); 
 
+        // SIMPAN ID USER KE SESSION
+        Session::put('id_user', Auth::user()->id_user);
+
         // Redirect ke halaman yang diinginkan (default ke /profile jika tidak ada tujuan lain)
-        return redirect()->intended(route('profile'))->with('success', 'Berhasil masuk!');
+        return redirect()->intended(route('profile.show'))->with('success', 'Berhasil masuk!');
     }
 
     // 3. Gagal (Redirect back)
@@ -66,4 +71,24 @@ public function login(Request $request)
         Auth::logout();
         return redirect('/')->with('success', 'Logged out!');
     }
+
+    public function changePassword(Request $request)
+{
+    $request->validate([
+        'old_password' => 'required',
+        'new_password' => 'required|min:6|confirmed'
+    ]);
+
+    $user = Auth::user();
+
+    if (!Hash::check($request->old_password, $user->password)) {
+        return back()->withErrors(['old_password' => 'Password lama salah']);
+    }
+
+    $user->password = Hash::make($request->new_password);
+    $user->save();
+
+    return redirect()->route('profile')->with('success', 'Password berhasil diganti!');
+}
+
 }

@@ -24,7 +24,7 @@
                     <span class="text-sm mt-1">Grafik</span>
                 </a>
 
-                <a href="{{ route('profile') }}" class="flex flex-col items-center hover:text-blue-600">
+                <a href="{{ route('profile.show') }}" class="flex flex-col items-center hover:text-blue-600">
                     <span class="text-sm mt-1">Profile</span>
                 </a>
             </div>

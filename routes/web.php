@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\WeatherController; 
 use App\Http\Controllers\SensorController;
+use App\Http\Controllers\ProfileController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -34,12 +36,19 @@ Route::post('/input_data', [SensorController::class, 'input']);
 |--------------------------------------------------------------------------
 */
 
+    Route::get('/password/change', function () {
+        return view('change-password');
+    })->name('password.change');
+
+    // PROSES UPDATE PASSWORD
+    Route::post('/password/change', [AuthController::class, 'changePassword'])
+        ->name('password.update');
+
 Route::middleware(['auth'])->group(function () {
     
     // Profile
-    Route::get('/profile', function () {
-        return view('profile');
-    })->name('profile');
+Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
 
     // Grafik (HARUS MENGGUNAKAN CONTROLLER UNTUK MEMUAT DATA SENSOR YANG DIFILTER)
     Route::get('/grafik', [SensorController::class, 'showGrafik'])->name('grafik');

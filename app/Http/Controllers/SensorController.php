@@ -11,6 +11,7 @@ class SensorController extends Controller
 {
     // ==========================================================
     // FUNGSI 1: INPUT DATA DARI SENSOR (PENYIMPANAN DATA)
+    // PERBAIKAN: id_user kini disimpan di tabel cahaya dan suhu juga.
     // ==========================================================
     public function input(Request $request)
     {
@@ -28,17 +29,19 @@ class SensorController extends Controller
         DB::beginTransaction();
 
         try {
-            // Insert 1: cahaya
+            // Insert 1: cahaya - KUNCI PERBAIKAN: id_user ditambahkan
             $id_cahaya = DB::table('cahaya')->insertGetId([
                 'intensitas_cahaya' => $cahaya,
                 'waktu' => now(),
+                'id_user' => $sensor_user_id, 
             ]);
 
-            // Insert 2: suhu
+            // Insert 2: suhu - KUNCI PERBAIKAN: id_user ditambahkan
             $id_suhu = DB::table('suhu')->insertGetId([
                 'temperature' => $suhu,
                 'kelembapan' => $kelembapan,
                 'waktu' => now(),
+                'id_user' => $sensor_user_id, 
             ]);
 
             // Insert 3: raindrop
@@ -70,51 +73,95 @@ class SensorController extends Controller
 
     // ==========================================================
     // FUNGSI 2: MENAMPILKAN DATA KE GRAFIK (FILTERING BY LOGIN)
+    // KUNCI PERBAIKAN: Menggunakan JOIN dan output JSON string
     // ==========================================================
     public function showGrafik()
     {
         // 1. Ambil ID User yang sedang login
         $user_id = Auth::id(); 
+        
+        // Inisialisasi variabel untuk View
+        $json_data_cahaya = '[]';
+        $json_data_suhu = '[]';
+        $json_data_raindrop = '[]';
+        $error_message = null; 
 
+        // Pastikan user sudah login
         if (!$user_id) {
-            return redirect('/login')->with('error', 'Anda harus login untuk melihat grafik.');
+             return redirect('/login')->with('error', 'Anda harus login untuk melihat grafik.');
         }
-        
-        // 2. Ambil ID Cahaya dan Suhu yang terkait dengan user_id ini (50 data terakhir)
-        $latest_raindrop_ids = DB::table('raindrop')
-            ->where('id_user', $user_id) // FILTER BERDASARKAN USER YANG LOGIN
-            ->orderBy('waktu', 'desc')
-            ->limit(50)
-            ->get(['id_cahaya', 'id_suhu']);
 
-        // Jika tidak ada data
-        if ($latest_raindrop_ids->isEmpty()) {
-             return view('grafik', [
-                'data_cahaya' => collect(), 
-                'data_suhu' => collect()
-            ]);
+        try {
+            // 2. Query GABUNGAN: Filter berdasarkan id_user dan JOIN semua tabel
+            $latest_data = DB::table('raindrop')
+                // JOIN CAHAYA
+                ->join('cahaya', 'raindrop.id_cahaya', '=', 'cahaya.id_cahaya')
+                // JOIN SUHU
+                ->join('suhu', 'raindrop.id_suhu', '=', 'suhu.id_suhu')
+                // Filter hanya data milik user yang sedang login
+                ->where('raindrop.id_user', $user_id) 
+                // Pilih semua kolom yang dibutuhkan
+                ->select([
+                    'raindrop.waktu',
+                    'cahaya.intensitas_cahaya',
+                    'suhu.temperature',
+                    'suhu.kelembapan',
+                    'raindrop.intensitas_hujan', 
+                ])
+                ->orderBy('raindrop.waktu', 'desc')
+                ->limit(50) 
+                ->get()
+                ->reverse() // Balikkan urutan agar grafik tampil dari waktu lama ke baru
+                ->values();
+
+
+            if ($latest_data->isEmpty()) {
+                $error_message = "Tidak ada data sensor ditemukan untuk ID User: {$user_id}. Pastikan sensor sudah mengirim data (cek juga kolom id_user di database).";
+            }
+
+            // 3. Pisahkan dan format data menjadi objek terpisah yang siap di-JSON-kan
+            
+            $data_cahaya = $latest_data->map(function ($item) {
+                return (object)[
+                    'waktu' => $item->waktu,
+                    'intensitas_cahaya' => $item->intensitas_cahaya
+                ];
+            });
+
+            $data_suhu = $latest_data->map(function ($item) {
+                return (object)[
+                    'waktu' => $item->waktu,
+                    'temperature' => $item->temperature,
+                    'kelembapan' => $item->kelembapan
+                ];
+            });
+
+            $data_raindrop = $latest_data->map(function ($item) {
+                return (object)[
+                    'waktu' => $item->waktu,
+                    'intensitas_hujan' => $item->intensitas_hujan
+                ];
+            });
+
+            // 4. Konversi ke JSON string untuk dikirim ke View
+            $json_data_cahaya = $data_cahaya->toJson();
+            $json_data_suhu = $data_suhu->toJson();
+            $json_data_raindrop = $data_raindrop->toJson();
+
+        } catch (Exception $e) {
+            // Tangani error database (misalnya kolom id_user tidak ada di salah satu tabel)
+            $error_message = "Database Error! Gagal memuat data. Pesan: " . $e->getMessage() . 
+                             ". Pastikan semua tabel sensor memiliki kolom 'id_user'.";
         }
-        
-        // Buat array ID untuk query berikutnya
-        $cahaya_ids = $latest_raindrop_ids->pluck('id_cahaya')->toArray();
-        $suhu_ids = $latest_raindrop_ids->pluck('id_suhu')->toArray();
-        
-        // 3. Ambil data cahaya berdasarkan ID yang difilter
-        $data_cahaya = DB::table('cahaya')
-                         ->whereIn('id_cahaya', $cahaya_ids) 
-                         ->orderBy('waktu', 'asc') 
-                         ->get();
 
-        // 4. Ambil data suhu berdasarkan ID yang difilter
-        $data_suhu = DB::table('suhu')
-                       ->whereIn('id_suhu', $suhu_ids) 
-                       ->orderBy('waktu', 'asc') 
-                       ->get();
 
-        // 5. Kirim data ke View
+        // 5. Kirim data dan pesan error ke View
         return view('grafik', [
-            'data_cahaya' => $data_cahaya, 
-            'data_suhu' => $data_suhu
+            'json_data_cahaya' => $json_data_cahaya, 
+            'json_data_suhu' => $json_data_suhu,
+            'json_data_raindrop' => $json_data_raindrop, 
+            'error_message' => $error_message, // Pesan ini penting!
+            'user_id' => $user_id 
         ]);
     }
 }
