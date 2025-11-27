@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\WeatherController; 
+use App\Http\Controllers\SensorController;
 
 Route::get('/', [WeatherController::class, 'currentWeather'])->name('home');
 
@@ -30,3 +31,11 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/weather', [WeatherController::class, 'currentWeather']);
 Route::get('/weather/forecast', [WeatherController::class, 'forecast']);
 Route::get('/weather-refresh', [WeatherController::class, 'fetchWeather']);
+
+// Sensor routes
+
+// Kalau pakai GET request (mirip input_data.php)
+Route::get('/input_data', [SensorController::class, 'input']);
+
+// Atau POST request (lebih aman)
+Route::post('/input_data', [SensorController::class, 'input']);

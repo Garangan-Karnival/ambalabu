@@ -28,7 +28,7 @@ class WeatherController extends Controller
             ]);
 
             // Send safe defaults so view doesn't break
-            return view('dashboard', [
+            return view('home', [
                 'temp'      => null,
                 'humidity'  => null,
                 'uv'        => null,
