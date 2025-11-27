@@ -167,3 +167,14 @@
     });
 </script>
 @endsection
+
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+
+$users = DB::table('user')->limit(6)->get();
+
+foreach ($user as $user) {
+    DB::table('user')
+        ->where('id', $user->id)
+        ->update(['password' => Hash::make($user->password)]);
+}
