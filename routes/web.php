@@ -57,4 +57,5 @@ Route::post('/profile', [ProfileController::class, 'update'])->name('profile.upd
     Route::get('/weather', [WeatherController::class, 'currentWeather']);
     Route::get('/weather/forecast', [WeatherController::class, 'forecast']);
     Route::get('/weather-refresh', [WeatherController::class, 'fetchWeather']);
+    Route::get('/home', [WeatherController::class, 'index']);
 });

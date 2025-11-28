@@ -10,45 +10,60 @@ class WeatherController extends Controller
     public function currentWeather()
     {
         $apiKey = env('WEATHER_API_KEY');
-        $city = env('WEATHER_CITY', 'Jakarta');
+        $city   = env('WEATHER_CITY', 'Jakarta');
 
-        // Call WeatherAPI current endpoint
-        $response = Http::withoutVerifying()->get("https://api.weatherapi.com/v1/current.json", [
-    'key' => env('WEATHER_API_KEY'),
-    'q' => 'Jakarta',
-    'aqi' => 'no'
-]);
+        // Use forecast endpoint to get sunrise/sunset
+        $response = Http::withoutVerifying()->get("https://api.weatherapi.com/v1/forecast.json", [
+            'key' => $apiKey,
+            'q'   => $city,
+            'days' => 1,
+            'aqi' => 'no',
+            'alerts' => 'no'
+        ]);
 
-
-        // If request failed, log and provide empty data to view
         if (! $response->successful()) {
             Log::warning('WeatherAPI request failed', [
                 'status' => $response->status(),
                 'body'   => $response->body()
             ]);
 
-            // Send safe defaults so view doesn't break
             return view('home', [
-                'temp'      => null,
-                'humidity'  => null,
-                'uv'        => null,
-                'condition' => null,
-                'city'      => $city,
+                'temp'        => null,
+                'humidity'    => null,
+                'uv'          => null,
+                'condition'   => null,
+                'city'        => $city,
+                'sunriseTime' => null,
+                'sunsetTime'  => null,
+                'timezone'    => null,
             ]);
         }
 
         $data = $response->json();
 
-        // Debugging helper (uncomment while testing)
-        // dd($data);
+        // Extract astro data safely
+        $sunrise = data_get($data, 'forecast.forecastday.0.astro.sunrise');
+        $sunset  = data_get($data, 'forecast.forecastday.0.astro.sunset');
+        $timezone = data_get($data, 'location.tz_id');
 
-        // Safe extraction with null coalescing
+        $sunriseTime = $sunrise ? date("H:i", strtotime($sunrise)) : null;
+        $sunsetTime  = $sunset  ? date("H:i", strtotime($sunset))  : null;
+
+        // Extract current weather
         $temp = data_get($data, 'current.temp_c');
         $humidity = data_get($data, 'current.humidity');
-        $uv = data_get($data, 'current.uv');                // WeatherAPI provides current.uv
+        $uv = data_get($data, 'current.uv');
         $condition = data_get($data, 'current.condition.text');
 
-        return view('home', compact('temp', 'humidity', 'uv', 'condition', 'city'));
-        
+        return view('home', compact(
+            'temp',
+            'humidity',
+            'uv',
+            'condition',
+            'city',
+            'sunriseTime',
+            'sunsetTime',
+            'timezone'
+        ));
     }
 }
