@@ -164,73 +164,6 @@
 
 </head>
 
-<script>
-// === SHOW POPUP FUNCTION ===
-function showWeatherPopup(message) {
-    const box = document.getElementById('weatherPopup');
-    const text = document.getElementById('weatherPopupText');
-
-    text.innerText = message;
-
-    // Fade-in
-    box.classList.remove("opacity-0", "pointer-events-none");
-
-    // Auto close after 6s
-    setTimeout(() => {
-        box.classList.add("opacity-0", "pointer-events-none");
-    }, 6000);
-}
-
-
-
-// === FETCH NEXT HOUR FORECAST ===
-function fetchNextHourForecast() {
-    const apiKey = "{{ env('WEATHER_API_KEY') }}";
-    const city = "{{ $city ?? 'Ambalabu' }}";
-
-    fetch(`https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${city}&days=1&lang=id`)
-        .then(res => res.json())
-        .then(data => {
-
-            const now = new Date();
-            let nextHourIndex = now.getHours() + 1;
-
-            // When it's 23:00 → next hour is 00:00 but still under index 23
-            if (nextHourIndex > 23) nextHourIndex = 23;
-
-            const f = data.forecast.forecastday[0].hour[nextHourIndex];
-
-            const condition = f.condition.text;
-            const temp = f.temp_c;
-            const rainChance = f.chance_of_rain;
-            const wind = f.wind_kph;
-
-            const message =
-                `Prakiraan 1 jam ke depan (${nextHourIndex}:00): ${condition}. ` +
-                `Suhu ${temp}°C. ` +
-                `Angin ${wind} km/jam. ` +
-                (rainChance > 0 ? `Kemungkinan hujan: ${rainChance}%.` : "Hampir tidak ada hujan.");
-
-            showWeatherPopup(message);
-        })
-        .catch(() => {
-            showWeatherPopup("Tidak dapat mengambil prakiraan cuaca 1 jam ke depan.");
-        });
-}
-
-
-
-// === RUN ON PAGE LOAD ===
-fetchNextHourForecast();
-
-
-// === AUTO REFRESH EVERY HOUR ===
-// 1000 ms * 60 * 60 = 3600000
-setInterval(fetchNextHourForecast, 3600000);
-
-</script>
-
-
 <body class="bg-[#F6F8FC] min-h-screen flex flex-col">
 
     <!-- Weather Popup -->
@@ -310,8 +243,10 @@ setInterval(fetchNextHourForecast, 3600000);
                 <span id="dayPhaseTextInside">Loading...</span>
             </div>
             <p id="currentTimeClock" class="text-gray-500 mb-2">--:--</p>
-
-
+            <button id="forecastBtn"
+                class="bg-blue-600 text-white px-4 py-2 rounded-xl shadow hover:bg-blue-700 transition mt-5 mb-5">
+                See Forecast
+            </button>
 
             <!-- MAIN GRID -->
             <div class="flex flex-col lg:flex-row gap-10">
@@ -572,6 +507,69 @@ setInterval(fetchNextHourForecast, 3600000);
             // Now update animated sky
             updateSkyEffects(minutes);
         }
+        // === SHOW POPUP FUNCTION ===
+        function showWeatherPopup(message) {
+            const box = document.getElementById('weatherPopup');
+            const text = document.getElementById('weatherPopupText');
+
+            text.innerText = message;
+
+            box.classList.remove("opacity-0", "pointer-events-none");
+
+            // Hide after 6 seconds
+            setTimeout(() =>
+                box.classList.add("opacity-0", "pointer-events-none"),
+                6000
+            );
+        }
+
+
+
+        // === FETCH NEXT HOUR FORECAST ===
+        function fetchNextHourForecast() {
+            const apiKey = "{{ env('WEATHER_API_KEY') }}";
+            const city = "{{ $city ?? 'Ambalabu' }}";
+
+            fetch(`https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${city}&days=1&lang=id`)
+                .then(res => res.json())
+                .then(data => {
+
+                    const now = new Date();
+                    let nextHour = now.getHours() + 1;
+                    if (nextHour > 23) nextHour = 23;
+
+                    const f = data.forecast.forecastday[0].hour[nextHour];
+
+                    const message =
+                        `Prakiraan 1 jam ke depan (${nextHour}:00): ${f.condition.text}. ` +
+                        `Suhu ${f.temp_c}°C. ` +
+                        `Angin ${f.wind_kph} km/jam. ` +
+                        (f.chance_of_rain > 0
+                            ? `Kemungkinan hujan: ${f.chance_of_rain}%.`
+                            : "Tidak ada potensi hujan.");
+
+                    showWeatherPopup(message);
+                })
+                .catch(() =>
+                    showWeatherPopup("Gagal mengambil data prakiraan cuaca.")
+                );
+        }
+
+
+
+        // === RUN ON PAGE LOAD ===
+        fetchNextHourForecast();
+
+
+        // === AUTO REFRESH EVERY HOUR (3600000 ms) ===
+        setInterval(fetchNextHourForecast, 3600000);
+
+
+
+        // === BUTTON CLICK EVENT ===
+        document.getElementById("forecastBtn").addEventListener("click", () => {
+            fetchNextHourForecast();
+        });
 
         // Run immediately
         updateBar();
@@ -579,7 +577,6 @@ setInterval(fetchNextHourForecast, 3600000);
         // Update live every second
         setInterval(updateBar, 1000);
     </script>
-
 
 </body>
 
