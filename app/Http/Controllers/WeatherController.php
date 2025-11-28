@@ -55,15 +55,67 @@ class WeatherController extends Controller
         $uv = data_get($data, 'current.uv');
         $condition = data_get($data, 'current.condition.text');
 
-        return view('home', compact(
-            'temp',
-            'humidity',
-            'uv',
-            'condition',
-            'city',
-            'sunriseTime',
-            'sunsetTime',
-            'timezone'
-        ));
+        // Determine weather-based roof state
+$weatherRoofState = 'open'; // default
+
+if ($condition && str_contains(strtolower($condition), 'rain')) {
+    $weatherRoofState = 'closed';
+}
+
+// SENSOR OVERRIDE SECTION
+$sensorRoofState = $this->getSensorRoofState(); // <- we will create this
+
+// Final decision: sensor has priority over weather
+$roofState = $sensorRoofState ?? $weatherRoofState;
+
+
+        return view('home', [
+    'temp'        => $temp,
+    'humidity'    => $humidity,
+    'uv'          => $uv,
+    'condition'   => $condition,
+    'city'        => $city,
+    'sunriseTime' => $sunriseTime,
+    'sunsetTime'  => $sunsetTime,
+    'timezone'    => $timezone,
+    'roofState'   => $roofState
+]);
+
     }
+    private function getSensorRoofState()
+{
+    try {
+        // Get latest raindrop data
+        $latest = DB::table('raindrop')
+            ->orderBy('waktu', 'desc')
+            ->first();
+
+        if (!$latest) {
+            return 'error'; // no data at all
+        }
+
+        // Check if data expired (no new data for 2 minutes)
+        if (now()->diffInSeconds($latest->waktu) > 120) {
+            return 'error';
+        }
+
+        // If the sensor has an explicit status (optional)
+        if (isset($latest->keterangan)) {
+            if (strtolower($latest->keterangan) === 'error') {
+                return 'error';
+            }
+        }
+
+        // Interpret rainfall
+        if ($latest->intensitas_hujan > 0) {
+            return 'closed';
+        }
+
+        return 'open';
+
+    } catch (\Exception $e) {
+        return 'error';
+    }
+}
+
 }

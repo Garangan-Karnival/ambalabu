@@ -238,14 +238,18 @@
             <!-- MAIN GRID -->
             <div class="flex flex-col lg:flex-row gap-10">
 
-                <!-- LEFT: REAL TIME EXECUTIONS -->
-                <div class="flex flex-col">
-                    <p class="text-gray-700 font-medium mb-2">Real-Time Roof Monitoring</p>
+                @php
+    $roofImage = [
+        'open'   => '/images/open-roof-house.png',
+        'closed' => '/images/closed-roof-house.png',
+        'error'  => '/images/error-sensor-house.png',
+    ][$roofState] ?? '/images/error-sensor-house.png';
+@endphpw
 
-                    <div class="bg-white rounded-2xl shadow p-4 inline-block w-fit">
-                        <img src="/images/open-roof-house.png" class="w-[500px] rounded-xl" alt="Roof Monitoring Image">
-                    </div>
-                </div>
+<img src="{{ $roofImage }}" 
+     class="w-[500px] rounded-xl transition-all duration-500" 
+     alt="Roof Monitoring Image">
+
 
                 <!-- RIGHT: WEATHER CARDS -->
                 <div class="flex-1">
