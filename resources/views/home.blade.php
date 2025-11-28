@@ -164,7 +164,85 @@
 
 </head>
 
+<script>
+// === SHOW POPUP FUNCTION ===
+function showWeatherPopup(message) {
+    const box = document.getElementById('weatherPopup');
+    const text = document.getElementById('weatherPopupText');
+
+    text.innerText = message;
+
+    // Fade-in
+    box.classList.remove("opacity-0", "pointer-events-none");
+
+    // Auto close after 6s
+    setTimeout(() => {
+        box.classList.add("opacity-0", "pointer-events-none");
+    }, 6000);
+}
+
+
+
+// === FETCH NEXT HOUR FORECAST ===
+function fetchNextHourForecast() {
+    const apiKey = "{{ env('WEATHER_API_KEY') }}";
+    const city = "{{ $city ?? 'Ambalabu' }}";
+
+    fetch(`https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${city}&days=1&lang=id`)
+        .then(res => res.json())
+        .then(data => {
+
+            const now = new Date();
+            let nextHourIndex = now.getHours() + 1;
+
+            // When it's 23:00 → next hour is 00:00 but still under index 23
+            if (nextHourIndex > 23) nextHourIndex = 23;
+
+            const f = data.forecast.forecastday[0].hour[nextHourIndex];
+
+            const condition = f.condition.text;
+            const temp = f.temp_c;
+            const rainChance = f.chance_of_rain;
+            const wind = f.wind_kph;
+
+            const message =
+                `Prakiraan 1 jam ke depan (${nextHourIndex}:00): ${condition}. ` +
+                `Suhu ${temp}°C. ` +
+                `Angin ${wind} km/jam. ` +
+                (rainChance > 0 ? `Kemungkinan hujan: ${rainChance}%.` : "Hampir tidak ada hujan.");
+
+            showWeatherPopup(message);
+        })
+        .catch(() => {
+            showWeatherPopup("Tidak dapat mengambil prakiraan cuaca 1 jam ke depan.");
+        });
+}
+
+
+
+// === RUN ON PAGE LOAD ===
+fetchNextHourForecast();
+
+
+// === AUTO REFRESH EVERY HOUR ===
+// 1000 ms * 60 * 60 = 3600000
+setInterval(fetchNextHourForecast, 3600000);
+
+</script>
+
+
 <body class="bg-[#F6F8FC] min-h-screen flex flex-col">
+
+    <!-- Weather Popup -->
+    <div id="weatherPopup" class="fixed top-4 left-1/2 transform -translate-x-1/2 
+            bg-white shadow-xl rounded-xl px-6 py-3 text-gray-700
+            opacity-0 pointer-events-none transition-all duration-700
+            z-[9999]">
+        <p id="weatherPopupText" class="font-medium text-sm">
+            Loading weather...
+        </p>
+    </div>
+
 
     <main class="flex-1">
 
@@ -237,20 +315,25 @@
 
             <!-- MAIN GRID -->
             <div class="flex flex-col lg:flex-row gap-10">
+                <!-- LEFT: ROOF MONITORING -->
+                <div class="flex flex-col shrink-0">
 
-                @php
-    $roofImage = [
-        'open'   => '/images/open-roof-house.png',
-        'closed' => '/images/closed-roof-house.png',
-        'error'  => '/images/error-sensor-house.png',
-    ][$roofState] ?? '/images/error-sensor-house.png';
-@endphpw
+                    <h2 class="text-xl font-semibold text-gray-700 mb-4">Real-Time Roof Monitoring</h2>
 
-<img src="{{ $roofImage }}" 
-     class="w-[500px] rounded-xl transition-all duration-500" 
-     alt="Roof Monitoring Image">
+                    @php
+                        $roofImage = [
+                            'open' => '/images/open-roof-house.png',
+                            'closed' => '/images/closed-roof-house.png',
+                            'error' => '/images/error-sensor-house.png',
+                        ][$roofState] ?? '/images/error-sensor-house.png';
+                    @endphp
 
+                    <div class="shrink-0">
+                        <img src="{{ $roofImage }}" class="rounded-xl transition-all duration-500 object-contain 
+                    max-w-[300px] h-auto" alt="Roof Monitoring Image">
+                    </div>
 
+                </div>
                 <!-- RIGHT: WEATHER CARDS -->
                 <div class="flex-1">
                     <h2 class="text-xl font-semibold text-gray-700 mb-4">Weather Overview</h2>
@@ -281,7 +364,7 @@
                             @endphp
 
                             <div>
-                                <p class="font-semibold text-gray-700 text-lg">Tingkat Paparan Sinar Matahari</p>
+                                <p class="font-semibold text-gray-700 text-lg">Tingkat Paparan Sinar UV</p>
                                 <p class="text-3xl font-bold text-yellow-600">
                                     {{ $uv ?? '-' }}
                                     <span class="text-sm text-gray-500">({{ $uvLabel }})</span>
@@ -348,154 +431,154 @@
     </footer>
 
     <script>
-    // Sunrise / sunset from Laravel
-    const sunrise = "{{ $sunriseTime }}";
-    const sunset = "{{ $sunsetTime }}";
+        // Sunrise / sunset from Laravel
+        const sunrise = "{{ $sunriseTime }}";
+        const sunset = "{{ $sunsetTime }}";
 
-    function toMinutes(str) {
-        const [h, m] = str.split(':').map(Number);
-        return h * 60 + m;
-    }
+        function toMinutes(str) {
+            const [h, m] = str.split(':').map(Number);
+            return h * 60 + m;
+        }
 
-    const sunriseMin = toMinutes(sunrise);
-    const sunsetMin = toMinutes(sunset);
+        const sunriseMin = toMinutes(sunrise);
+        const sunsetMin = toMinutes(sunset);
 
-    // Colors
-    const night = [12, 20, 69];
-    const sunriseC = [255, 181, 102];
-    const day = [135, 206, 250];
-    const sunsetC = [255, 217, 147];
+        // Colors
+        const night = [12, 20, 69];
+        const sunriseC = [255, 181, 102];
+        const day = [135, 206, 250];
+        const sunsetC = [255, 217, 147];
 
-    function interpolate(a, b, t) { return a + (b - a) * t; }
-    function mix(c1, c2, t) {
-        return `rgb(
+        function interpolate(a, b, t) { return a + (b - a) * t; }
+        function mix(c1, c2, t) {
+            return `rgb(
             ${Math.round(interpolate(c1[0], c2[0], t))},
             ${Math.round(interpolate(c1[1], c2[1], t))},
             ${Math.round(interpolate(c1[2], c2[2], t))}
         )`;
-    }
-
-    let lastHour = -1;
-
-    function updateSkyEffects(minutes) {
-        const totalDay = 24 * 60;
-
-        const sunEl = document.getElementById("sun");
-        const moonEl = document.getElementById("moon");
-        const cloudContainer = document.getElementById("cloudContainer");
-        const starContainer = document.getElementById("starContainer");
-        const fogLayer = document.getElementById("fogLayer");
-
-        // SUN movement
-        const sunPos = (minutes - sunriseMin) / (sunsetMin - sunriseMin);
-        if (sunPos >= 0 && sunPos <= 1) {
-            sunEl.style.opacity = 1;
-            moonEl.style.opacity = 0;
-            sunEl.style.left = (sunPos * 90 + 5) + "%";
         }
 
-        // MOON movement
-        const moonPos = minutes < sunriseMin
-            ? minutes / sunriseMin
-            : (minutes - (sunsetMin + 120)) / (totalDay - (sunsetMin + 120));
+        let lastHour = -1;
 
-        if (minutes < sunriseMin || minutes > sunsetMin + 120) {
-            moonEl.style.opacity = 1;
-            sunEl.style.opacity = 0;
-            moonEl.style.left = (moonPos * 90 + 5) + "%";
+        function updateSkyEffects(minutes) {
+            const totalDay = 24 * 60;
+
+            const sunEl = document.getElementById("sun");
+            const moonEl = document.getElementById("moon");
+            const cloudContainer = document.getElementById("cloudContainer");
+            const starContainer = document.getElementById("starContainer");
+            const fogLayer = document.getElementById("fogLayer");
+
+            // SUN movement
+            const sunPos = (minutes - sunriseMin) / (sunsetMin - sunriseMin);
+            if (sunPos >= 0 && sunPos <= 1) {
+                sunEl.style.opacity = 1;
+                moonEl.style.opacity = 0;
+                sunEl.style.left = (sunPos * 90 + 5) + "%";
+            }
+
+            // MOON movement
+            const moonPos = minutes < sunriseMin
+                ? minutes / sunriseMin
+                : (minutes - (sunsetMin + 120)) / (totalDay - (sunsetMin + 120));
+
+            if (minutes < sunriseMin || minutes > sunsetMin + 120) {
+                moonEl.style.opacity = 1;
+                sunEl.style.opacity = 0;
+                moonEl.style.left = (moonPos * 90 + 5) + "%";
+            }
+
+            // Stars
+            starContainer.style.opacity =
+                (minutes < sunriseMin || minutes > sunsetMin + 120) ? 1 : 0;
+
+            // Fog
+            fogLayer.style.display =
+                (minutes >= sunriseMin - 40 && minutes <= sunriseMin + 40)
+                    ? "block" : "none";
         }
 
-        // Stars
-        starContainer.style.opacity =
-            (minutes < sunriseMin || minutes > sunsetMin + 120) ? 1 : 0;
+        function updateBar() {
+            const now = new Date();
+            const hour = now.getHours();
+            const minutes = now.getHours() * 60 + now.getMinutes();
 
-        // Fog
-        fogLayer.style.display =
-            (minutes >= sunriseMin - 40 && minutes <= sunriseMin + 40)
-            ? "block" : "none";
-    }
+            const timeClock = document.getElementById("currentTimeClock");
+            const uvCard = document.getElementById("uvCard");
+            const bar = document.getElementById("daynightBar");
+            const labelInside = document.getElementById("dayPhaseTextInside");
 
-    function updateBar() {
-        const now = new Date();
-        const hour = now.getHours();
-        const minutes = now.getHours() * 60 + now.getMinutes();
+            // REAL CLOCK ticking each second
+            timeClock.innerText = now.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit"
+            });
 
-        const timeClock = document.getElementById("currentTimeClock");
-        const uvCard = document.getElementById("uvCard");
-        const bar = document.getElementById("daynightBar");
-        const labelInside = document.getElementById("dayPhaseTextInside");
+            // Hourly sheen animation
+            if (hour !== lastHour) {
+                bar.classList.add("sheen");
+                setTimeout(() => bar.classList.remove("sheen"), 1500);
+                lastHour = hour;
+            }
 
-        // REAL CLOCK ticking each second
-        timeClock.innerText = now.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit"
-        });
+            let topColor, bottomColor, textLabel;
 
-        // Hourly sheen animation
-        if (hour !== lastHour) {
-            bar.classList.add("sheen");
-            setTimeout(() => bar.classList.remove("sheen"), 1500);
-            lastHour = hour;
+            // Night → Sunrise
+            if (minutes < sunriseMin) {
+                const t = minutes / sunriseMin;
+                topColor = mix(night, sunriseC, t);
+                bottomColor = mix(night, day, t * 0.5);
+                textLabel = "Night";
+
+                // Sunrise
+            } else if (minutes < sunriseMin + 120) {
+                const t = (minutes - sunriseMin) / 120;
+                topColor = mix(sunriseC, day, t);
+                bottomColor = mix(night, sunriseC, t);
+                textLabel = "Sunrise";
+
+                // Day
+            } else if (minutes < sunsetMin) {
+                const t = (minutes - (sunriseMin + 120)) / (sunsetMin - (sunriseMin + 120));
+                topColor = mix(day, sunsetC, t);
+                bottomColor = mix(sunriseC, day, t * 0.5);
+                textLabel = "Day";
+
+                // Sunset
+            } else if (minutes < sunsetMin + 120) {
+                const t = (minutes - sunsetMin) / 120;
+                topColor = mix(sunsetC, night, t);
+                bottomColor = mix(day, sunsetC, t);
+                textLabel = "Sunset";
+
+                // Night
+            } else {
+                topColor = `rgb(${night[0]}, ${night[1]}, ${night[2]})`;
+                bottomColor = `rgb(${night[0] + 10}, ${night[1] + 10}, ${night[2] + 15})`;
+                textLabel = "Night";
+            }
+
+            bar.style.background = `linear-gradient(to right, ${topColor}, ${bottomColor})`;
+            labelInside.innerText = textLabel;
+
+            // UV noon glow
+            if (hour >= 11 && hour <= 14) {
+                uvCard.classList.add("bg-yellow-200");
+            } else {
+                uvCard.classList.remove("bg-yellow-200");
+            }
+
+            // Now update animated sky
+            updateSkyEffects(minutes);
         }
 
-        let topColor, bottomColor, textLabel;
+        // Run immediately
+        updateBar();
 
-        // Night → Sunrise
-        if (minutes < sunriseMin) {
-            const t = minutes / sunriseMin;
-            topColor = mix(night, sunriseC, t);
-            bottomColor = mix(night, day, t * 0.5);
-            textLabel = "Night";
-
-        // Sunrise
-        } else if (minutes < sunriseMin + 120) {
-            const t = (minutes - sunriseMin) / 120;
-            topColor = mix(sunriseC, day, t);
-            bottomColor = mix(night, sunriseC, t);
-            textLabel = "Sunrise";
-
-        // Day
-        } else if (minutes < sunsetMin) {
-            const t = (minutes - (sunriseMin + 120)) / (sunsetMin - (sunriseMin + 120));
-            topColor = mix(day, sunsetC, t);
-            bottomColor = mix(sunriseC, day, t * 0.5);
-            textLabel = "Day";
-
-        // Sunset
-        } else if (minutes < sunsetMin + 120) {
-            const t = (minutes - sunsetMin) / 120;
-            topColor = mix(sunsetC, night, t);
-            bottomColor = mix(day, sunsetC, t);
-            textLabel = "Sunset";
-
-        // Night
-        } else {
-            topColor = `rgb(${night[0]}, ${night[1]}, ${night[2]})`;
-            bottomColor = `rgb(${night[0] + 10}, ${night[1] + 10}, ${night[2] + 15})`;
-            textLabel = "Night";
-        }
-
-        bar.style.background = `linear-gradient(to right, ${topColor}, ${bottomColor})`;
-        labelInside.innerText = textLabel;
-
-        // UV noon glow
-        if (hour >= 11 && hour <= 14) {
-            uvCard.classList.add("bg-yellow-200");
-        } else {
-            uvCard.classList.remove("bg-yellow-200");
-        }
-
-        // Now update animated sky
-        updateSkyEffects(minutes);
-    }
-
-    // Run immediately
-    updateBar();
-
-    // Update live every second
-    setInterval(updateBar, 1000);
-</script>
+        // Update live every second
+        setInterval(updateBar, 1000);
+    </script>
 
 
 </body>
